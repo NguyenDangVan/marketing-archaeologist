@@ -1,0 +1,97 @@
+{
+  "$id": "https://raw.githubusercontent.com/NguyenDangVan/marketing-archaeologist/main/schemas/claim-input.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "level": {
+      "type": "string",
+      "enum": [
+        "observation",
+        "pattern",
+        "validated"
+      ]
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "fact",
+        "inference"
+      ]
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 1
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "website",
+        "youtube",
+        "meta_ad_library",
+        "facebook_page",
+        "tiktok",
+        "shopee",
+        "tiktok_shop",
+        "lazada",
+        "instagram",
+        "threads",
+        "google_maps",
+        "press",
+        "dark_channel"
+      ]
+    },
+    "evidence_ids": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^ev_[0-9A-HJKMNP-TV-Z]{26}$"
+      }
+    },
+    "counter_evidence_ids": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^ev_[0-9A-HJKMNP-TV-Z]{26}$"
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "hypothesis",
+        "supported",
+        "contradicted",
+        "stale"
+      ]
+    },
+    "expires_at": {
+      "default": null,
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "level",
+    "kind",
+    "statement",
+    "evidence_ids",
+    "confidence"
+  ]
+}

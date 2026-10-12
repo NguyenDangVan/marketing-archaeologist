@@ -1,0 +1,70 @@
+{
+  "$id": "https://raw.githubusercontent.com/NguyenDangVan/marketing-archaeologist/main/schemas/feature.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "evidence_id": {
+      "type": "string",
+      "pattern": "^ev_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "extractor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hook": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "format": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "cta": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "offer": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "price_points_vnd": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      }
+    },
+    "topics": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "language_notes": {
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "evidence_id",
+    "extractor",
+    "hook",
+    "format",
+    "cta",
+    "offer"
+  ]
+}

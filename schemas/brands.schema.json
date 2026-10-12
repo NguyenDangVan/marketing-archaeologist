@@ -1,0 +1,79 @@
+{
+  "$id": "https://raw.githubusercontent.com/NguyenDangVan/marketing-archaeologist/main/schemas/brands.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "brands": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^brand_[a-z0-9_]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "handles": {
+            "default": {},
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "enum": [
+                "website",
+                "youtube",
+                "meta_ad_library",
+                "facebook_page",
+                "tiktok",
+                "shopee",
+                "tiktok_shop",
+                "lazada",
+                "instagram",
+                "threads",
+                "google_maps"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "dark_channels": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "channel": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "note": {
+                  "type": "string"
+                },
+                "known_from": {
+                  "default": [],
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^ev_[0-9A-HJKMNP-TV-Z]{26}$"
+                  }
+                }
+              },
+              "required": [
+                "channel"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+# Local workspaces created while developing (niches, data, reports)
+.marc-dev/
+*.db
+*.db-journal

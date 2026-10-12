@@ -1,19 +1,23 @@
 # Marketing Archaeologist — PRD cho MVP (thị trường Việt Nam)
 
-Trạng thái: bản nháp đầu tiên, chờ người dùng duyệt. Tên dự án là tên làm việc, chưa kiểm tra thương hiệu/tên miền/npm.
-Ngày: 2026-10-12.
+Trạng thái: bản nháp, đã duyệt hướng **skill làm trung tâm** (agent + công cụ `marc`). Tên dự án là tên làm việc, chưa kiểm tra thương hiệu/tên miền/npm.
+Ngày: 2026-10-12. Sửa cùng ngày: chuyển từ "CLI là sản phẩm, skill là P1" sang "skill là sản phẩm, `marc` là công cụ của skill" (§1, §6, §11, §12, §14).
 
 ---
 
 ## 1. Tóm tắt
 
-Một công cụ mã nguồn mở (CLI + agent skill) nhận vào **một ngách và danh sách thương hiệu đối thủ tại Việt Nam**, tự thu thập dấu vết marketing công khai của họ trên **fanpage, TikTok, YouTube, quảng cáo Meta, sàn thương mại điện tử (Shopee, TikTok Shop, Lazada), website và comment**, rồi xuất ra:
+Một **agent skill mã nguồn mở** (cài vào Claude Code hoặc harness tương tự) kèm công cụ dòng lệnh `marc`. Người dùng giao cho agent **một ngách và danh sách thương hiệu đối thủ tại Việt Nam**; agent đi xem dấu vết marketing công khai của họ trên **fanpage, TikTok, YouTube, quảng cáo Meta, sàn thương mại điện tử (Shopee, TikTok Shop, Lazada), website và comment**, rồi xuất ra:
 
 1. Một **bản teardown có dẫn chứng**: đối thủ định vị thế nào, nói với ai, dùng format nội dung gì, quảng cáo nào chạy lâu, khách hàng phàn nàn/khen gì.
 2. Một **playbook theo ngách**: các mẫu hình lặp lại giữa nhiều đối thủ, kèm mức tin cậy, phản ví dụ và giới hạn.
 3. Khi chạy lại: **báo cáo thay đổi** (ad mới, ad dừng, đổi giá, đổi format, bài bùng nổ mới) và **đề xuất sửa playbook** dưới dạng diff để người duyệt.
 
-Khác biệt so với các bộ "marketing skills cho AI agent": hệ thống **không trả lời từ kiến thức sẵn có của LLM**. Mọi nhận định phải trỏ về bằng chứng đã lưu, có URL, ảnh chụp và thời điểm quan sát.
+Phân vai:
+- **Agent + skill** là bộ não: quyết định xem gì, đọc trang, xem ảnh, trích hook/format/ưu đãi, phân loại comment, viết báo cáo.
+- **`marc`** là tay chân và trí nhớ: lưu bằng chứng bền vững qua nhiều lần chạy, chống trùng, **kiểm tra luật bằng chứng bằng code**, tính thống kê, so sánh theo thời gian. `marc` không gọi API LLM.
+
+Khác biệt so với các bộ "marketing skills cho AI agent": đó là thư viện prompt; ở đây agent **không được trả lời từ kiến thức sẵn có của LLM**. Mọi nhận định phải là claim đã qua `marc`, trỏ về bằng chứng có URL, ảnh chụp và thời điểm quan sát — và `marc` từ chối claim vi phạm luật.
 
 ## 2. Vấn đề
 
@@ -65,22 +69,24 @@ Chi phí mỗi lượt nghiên cứu (LLM + proxy/scraper) được **đo trong 
 ## 6. Luồng chính
 
 ```
-init ngách ──► khai báo thương hiệu (fanpage, TikTok, YouTube, website)
+Người dùng: "soi 5 đối thủ mỹ phẩm D2C này"
    │
-collect ──► connectors thu thập ──► Evidence (URL + snapshot + observed_at + số liệu)
-   │                                  │
-   │                     import thủ công (dán URL / số liệu / ảnh) khi connector không có
+Agent đọc SKILL.md ──► chọn workflow: setup | teardown | track
    │
-analyze
-   ├─ trích đặc trưng từng bài/ad/video (hook, format, CTA, chủ đề, ưu đãi, giá)  ← LLM, structured output
-   ├─ baseline từng kênh + đánh dấu outlier                                       ← thống kê, xác định
-   ├─ phân loại comment: đau / phản đối / câu hỏi / khen                           ← LLM
-   └─ dựng Claim: Observation → Pattern (≥ 2 thương hiệu độc lập)
+setup     marc init / sửa brands.yaml / marc validate
    │
-report ──► teardown.md (mỗi thương hiệu) + playbook.md (cả ngách), mọi claim trích evidence id
+teardown  marc status --json                      ← biết còn thiếu gì
+   │      agent xem từng thương hiệu × kênh (trang công khai, không đăng nhập)
+   │      marc import --from batch.json            ← bằng chứng + ảnh chụp, chống trùng theo ngày
+   │      agent trích đặc trưng ──► marc feature add
+   │      marc analyze                             ← baseline, outlier, độ bền ad, tốc độ bán (code)
+   │      agent viết claim ──► marc claim add      ← marc từ chối claim sai luật
+   │      marc claim list --json ──► agent viết teardown + playbook nháp, mọi câu trích [ev_…]
    │
-(chạy lại định kỳ) diff ──► changes.md + proposals/<id>.md (diff playbook) ──► người duyệt accept / reject
+track     quan sát lại ──► marc import ──► marc diff ──► agent viết proposal ──► người duyệt
 ```
+
+Connector tự động (`marc collect`) bổ sung cho bước "agent xem" khi cần chạy theo lịch mà không có agent ngồi đó, không thay thế nó.
 
 ## 7. Nguồn dữ liệu tại Việt Nam
 
@@ -134,6 +140,7 @@ Locket đang rất phổ biến với Gen Z Việt Nam, nhưng là mạng khép 
 ### 7.4 Quyết định thiết kế
 - **Meta Ad Library là tín hiệu giá trị nhất cho VN**: một ad thương mại chạy liên tục nhiều tuần là bằng chứng mạnh nhất công khai về "cái này có lãi" (vẫn chỉ là tín hiệu). Vì API không lưu ad VN, **bản lưu trữ tự tích lũy theo ngày chính là tài sản dữ liệu** mà công cụ chung không có.
 - **Sàn TMĐT là nguồn duy nhất có tín hiệu gần với doanh số**: số "đã bán" và số đánh giá theo thời gian cho phép ước lượng tốc độ bán. Kết hợp với ad đang chạy cùng thời điểm, đây là cặp tín hiệu mạnh nhất của MVP (vẫn không phải nhân quả).
+- **Trong MVP, agent là "connector" chính**: nó xem trang công khai như một người đang soi đối thủ và ghi lại qua `marc import`. Connector tự động chỉ cần cho theo dõi định kỳ (P1), bắt đầu với Thư viện quảng cáo Meta.
 - Connector hạng B chạy bằng trình duyệt headless, **không đăng nhập**, tần suất thấp (≤ 1 lượt/thương hiệu/ngày/nguồn), dễ hỏng → phải có health check và tự chuyển sang yêu cầu import thủ công khi hỏng, không âm thầm trả rỗng.
 - Hạng B có rủi ro điều khoản dịch vụ; cần ý kiến pháp lý trước khi phát hành công khai (§13, Q3). Phương án dự phòng: extension trình duyệt cho người dùng **tự bấm lưu** những gì họ đang xem (tận dụng kinh nghiệm từ growth-os / auto-mkt) — để P1.
 
@@ -142,21 +149,20 @@ Locket đang rất phổ biến với Gen Z Việt Nam, nhưng là mạng khép 
 Lưu bằng SQLite + thư mục `snapshots/` (HTML, ảnh chụp, JSON thô). Mọi bản ghi bất biến; sửa = bản ghi mới.
 
 ```yaml
-# Brand — khai báo trong niches/<niche>/brands.yaml
-id: brand_cocoon
-name: "Cocoon"
-niche: vn-skincare-d2c
+# Brand — khai báo trong niches/<niche>/brands.yaml (khóa của handles = id kênh)
+id: brand_vi_du
+name: "Thương hiệu Ví Dụ"
 handles:
+  website: "https://..."
+  meta_ad_library: "123456789012345"   # Page ID
   facebook_page: "https://facebook.com/..."
   tiktok: "@..."
-  youtube_channel: "UC..."
-  website: "https://..."
-  meta_ad_library_page_id: "..."
+  youtube: "UC..."
   instagram: "@..."
   threads: "@..."
-  shopee_shop: "https://shopee.vn/..."
+  shopee: "https://shopee.vn/..."
   tiktok_shop: "https://..."
-  lazada_shop: "https://..."
+  lazada: "https://lazada.vn/..."
 dark_channels:            # tồn tại nhưng không quan sát tự động được
   - channel: locket
     note: "Locket Celebrity, công bố trên TikTok 2026-09"
@@ -165,8 +171,9 @@ dark_channels:            # tồn tại nhưng không quan sát tự động đ�
 
 # Evidence — một lần quan sát một thứ
 id: ev_01J...
-brand_id: brand_cocoon
-source: meta_ad_library | facebook_page | tiktok | youtube | website | shopee | tiktok_shop | lazada | instagram | threads | press | manual
+brand_id: brand_vi_du
+source: <id kênh> | press | dark_channel     # nhập tay hay connector ghi ở collected_by
+dark_channel: locket                          # chỉ khi source = dark_channel
 evidence_class: primary | secondary   # secondary = báo ngành / bên thứ ba thuật lại
 kind: ad | post | video | page | comment_batch | pricing | product_listing | review_batch | article
 url: "https://..."
@@ -261,41 +268,46 @@ JSON Schema tương ứng nằm trong `schemas/`; validator chạy ở mọi bư
 
 **R1. Registry ngách và thương hiệu**
 - [ ] `marc init <niche>` tạo `niches/<niche>/{niche.yaml,brands.yaml}`, với `channels` và `dark_channels` (§7.2).
-- [ ] Validator báo lỗi rõ khi thiếu handle cho một kênh đã khai báo trong `channels`, hoặc sai định dạng URL.
+- [ ] Validator báo **lỗi** khi handle sai định dạng theo kênh, id trùng, id ngách không khớp thư mục; báo **cảnh báo** khi thương hiệu thiếu handle cho một kênh trong `channels` (kênh đó sẽ được ghi là thiếu nguồn).
 - [ ] Connector được nạp theo `channels`; kênh không có connector → báo "chỉ hỗ trợ import thủ công", không lỗi.
 
-**R2. Connectors** (chung một interface `collect(brand, since) → Evidence[]`, có `healthcheck()`)
-- [ ] Website: lưu HTML + ảnh chụp toàn trang + text đã chuẩn hóa; tôn trọng robots.txt.
-- [ ] YouTube Data API: video, số liệu, top comment, transcript nếu có.
-- [ ] Meta Ad Library (web, quốc gia VN, theo page id): mọi ad đang chạy, ngày bắt đầu, nội dung, ảnh/thumbnail creative.
-- [ ] TikTok hồ sơ công khai: danh sách video gần nhất, view, caption, ảnh bìa.
-- [ ] Sàn TMĐT — **ít nhất một sàn** (Shopee hoặc TikTok Shop, chọn sàn mà các thương hiệu benchmark bán nhiều nhất): N sản phẩm bán chạy nhất của shop, số "đã bán", đánh giá, giá, khuyến mãi, mẫu review mới nhất. Sàn còn lại qua import thủ công.
-- [ ] Import thủ công: `marc import` nhận URL + số liệu + ảnh hoặc CSV, kể cả nguồn thứ cấp (bài báo ngành) và ảnh chụp từ kênh tối; Evidence ghi `collected_by: manual`.
-- Nghiệm thu: chạy lại cùng ngày không tạo Evidence trùng (dedupe theo `content_hash`); connector lỗi trả lỗi có cấu trúc và ghi vào `runs/<id>.json`, không trả mảng rỗng âm thầm; có test với fixture HTML đã lưu (không gọi mạng trong CI).
+**R2. Thu thập qua agent**
+- [ ] Skill hướng dẫn agent xem gì trên từng kênh VN (`references/channels-vn.md`): Thư viện quảng cáo Meta, fanpage, TikTok, sàn TMĐT, YouTube, website, báo ngành.
+- [ ] `marc import --from <file|->` nhận một hoặc nhiều mục JSON (`text`, `items`, `metrics`, `snapshot`, `raw`); mục sai không chặn mục đúng; `--json` trả kết quả từng mục để agent tự sửa.
+- [ ] Nhập tay vẫn dùng được cho người không có agent (cờ `--source/--kind/--url/...`), kể cả nguồn thứ cấp và ảnh chụp kênh tối.
+- [ ] `marc status --json` cho biết thương hiệu × kênh nào còn thiếu bằng chứng, để agent lập kế hoạch.
+- Nghiệm thu: chạy lại cùng ngày không tạo bằng chứng trùng; quan sát lại ngày khác tạo bản ghi mới; comment/review chỉ lưu nội dung, không lưu người viết.
 
 **R3. Phân tích**
-- [ ] Trích Feature bằng LLM với structured output, validate theo schema; lỗi parse thì ghi lỗi, không đoán.
-- [ ] Baseline + outlier tính bằng code xác định, có unit test.
-- [ ] Phân loại comment tiếng Việt (có dấu, không dấu, teencode).
-- [ ] Dựng Claim; validator **từ chối** claim không có `evidence_ids`; pattern từ < 2 thương hiệu bị hạ thành observation.
+- [ ] Agent trích đặc trưng và ghi qua `marc feature add`; `marc` validate theo schema và kiểm tra evidence tồn tại.
+- [ ] `marc analyze`: baseline + outlier theo chính kênh, độ bền ad, tốc độ bán trên sàn — **code xác định, có unit test**, agent đọc kết quả thay vì tự nhẩm.
+- [ ] Agent phân loại comment/review tiếng Việt (có dấu, không dấu, teencode); bộ benchmark có các ca này.
+- [ ] `marc claim add` từ chối: claim không có evidence, evidence không tồn tại hoặc khác ngách, pattern từ < 2 thương hiệu, inference có `confidence: high`, claim chỉ dựa nguồn thứ cấp mà không `low`, cấp `validated`. Một mục sai → không ghi mục nào.
 
-**R4. Báo cáo**
-- [ ] `marc report` sinh `reports/<date>/teardown-<brand>.md` và `playbook.md`.
-- [ ] Mỗi câu nhận định có chú thích `[ev_…]` link tới snapshot cục bộ và URL gốc, kèm ngày quan sát.
-- [ ] Phần "Nguồn bị thiếu" liệt kê nguồn không thu thập được.
-- [ ] Phần "Kênh không quan sát được" liệt kê `dark_channels` của từng thương hiệu kèm bằng chứng gián tiếp (nếu có).
-- [ ] Phân biệt hiển thị: **Quan sát** / **Mẫu hình** / **Suy luận (chưa kiểm chứng)**.
+**R4. Báo cáo** (agent viết theo `references/report-template.md`)
+- [ ] `reports/<date>/teardown-<brand>.md` và `reports/<date>/playbook-draft.md`; không ghi đè `niches/<niche>/playbook.md`.
+- [ ] Mỗi câu nhận định có `[ev_…]`; chỉ dùng claim có trong `marc claim list`.
+- [ ] Có mục "Nguồn bị thiếu" và "Kênh tối" (từ `marc status`).
+- [ ] Phân biệt hiển thị: **Quan sát** / **Mẫu hình** / **Giả thuyết (chưa kiểm chứng)**.
 
 **R5. Chạy lại và thay đổi**
-- [ ] `marc diff --since <date>` phát hiện: ad mới, ad dừng, đổi giá/ưu đãi trên website hoặc sàn, đổi headline, bài outlier mới, đổi tần suất đăng, sản phẩm tăng tốc độ bán bất thường.
-- [ ] Thay đổi ảnh hưởng tới claim hiện có → sinh `proposals/<id>.md` gồm diff playbook + lý do + evidence. Chỉ áp dụng khi `marc proposal accept <id>`; có `reject` và lịch sử quyết định.
+- [ ] `marc diff --since <date>` phát hiện: ad mới, ad không còn thấy, đổi giá/ưu đãi trên website hoặc sàn, đổi headline, bài outlier mới, đổi tần suất đăng, sản phẩm tăng tốc độ bán bất thường.
+- [ ] Agent viết `proposals/<id>.md` gồm diff playbook + lý do + evidence; chỉ áp dụng khi người dùng duyệt. `marc proposal list|accept|reject` ghi lịch sử quyết định.
 
 **R6. Benchmark**
 - [ ] `evaluations/` chứa bộ đáp án gán tay: ≥ 30 claim cho 5 thương hiệu của ngách benchmark + ≥ 10 thay đổi đã biết.
-- [ ] `marc eval` in: evidence coverage, claim accuracy, recall phát hiện thay đổi, chi phí và thời gian mỗi lượt.
-- [ ] Kết quả eval lưu theo phiên bản prompt/model để so hồi quy.
+- [ ] `marc eval` so claim agent ghi với bộ đáp án: evidence coverage, claim accuracy, recall phát hiện thay đổi; ghi thời gian và chi phí mỗi lượt.
+- [ ] Kết quả eval lưu theo phiên bản skill + model để so hồi quy.
+
+**R7. Skill**
+- [ ] `skills/marketing-archaeologist/SKILL.md` + workflow `setup`, `teardown`, `track` + tài liệu tham chiếu kênh VN và mẫu báo cáo.
+- [ ] Skill kiểm tra `marc --version` trước khi chạy; thiếu thì hướng dẫn cài và dừng.
+- [ ] Luật trong skill khớp luật `marc` kiểm tra (một nguồn sự thật: luật nằm trong code, skill giải thích lại).
+- [ ] Cài được vào Claude Code bằng cách liên kết thư mục skill (README hướng dẫn).
 
 ### P1 — làm ngay sau MVP
+- Connector tự động để theo dõi theo lịch không cần agent: **Thư viện quảng cáo Meta trước**, rồi website, YouTube Data API, TikTok hồ sơ, một sàn TMĐT.
+- `marc capture <url>`: chụp HTML + ảnh toàn trang của trang công khai (headless, không đăng nhập) cho harness không tự chụp được.
 - Connector fanpage qua API Page Public Content Access (sau khi qua App Review).
 - Instagram (bài tự nhiên) và Threads (API chính thức, quyền `threads_keyword_search`).
 - Connector cho sàn TMĐT còn lại (Shopee / TikTok Shop / Lazada).
@@ -304,7 +316,7 @@ JSON Schema tương ứng nằm trong `schemas/`; validator chạy ở mọi bư
 - Phân tích video: trích khung hình 3 giây đầu + transcript tự động.
 - Chạy theo lịch (cron) + gửi tóm tắt thay đổi qua email/Telegram.
 - Người dùng nhập kết quả thử nghiệm của mình → claim lên cấp `validated`.
-- Agent skill (Claude Code / harness khác) gọi CLI, để hỏi đáp trên bộ nhớ thị trường.
+- Hỗ trợ thêm harness ngoài Claude Code (Codex, Gemini CLI, OpenCode…).
 
 ### P2 — thiết kế để không chặn đường về sau
 - Nhiều ngách, nhiều thị trường (schema đã có `market`).
@@ -314,31 +326,33 @@ JSON Schema tương ứng nằm trong `schemas/`; validator chạy ở mọi bư
 
 ## 12. Kiến trúc
 
-TypeScript/Node, pnpm, một package CLI `marc` (tên tạm). LLM provider cấu hình qua biến môi trường; có mock provider cho test.
+TypeScript/Node ≥ 22.13, pnpm. `marc` dùng SQLite có sẵn trong Node (`node:sqlite`), không có dependency native, **không gọi LLM** — phần LLM là chính agent đang chạy skill.
 
 ```
 marketing-archaeologist/
-├── AGENTS.md
+├── AGENTS.md                 # luật cho coding agent phát triển repo
+├── skills/marketing-archaeologist/
+│   ├── SKILL.md              # sản phẩm: luật + chọn workflow
+│   ├── workflows/            # setup.md, teardown.md, track.md
+│   └── references/           # channels-vn.md, report-template.md
 ├── src/
-│   ├── cli/            # init, collect, import, analyze, report, diff, proposal, eval
-│   ├── registry/       # niche.yaml, brands.yaml
-│   ├── connectors/     # plugin: website, youtube, meta-ad-library, tiktok-profile, shopee|tiktok-shop, manual
-│   ├── store/          # SQLite + snapshots, ghi nguyên tử, dedupe
-│   ├── analyze/        # features (LLM), baseline (thống kê), comments (LLM), claims
-│   ├── report/         # Markdown teardown + playbook
-│   ├── diff/           # phát hiện thay đổi + sinh proposal
-│   └── eval/
-├── schemas/            # evidence, feature, claim, change-proposal (.schema.json)
-├── prompts/            # có version; đổi prompt = phiên bản mới
-├── niches/<niche>/     # brands.yaml, playbook.md (được version bằng git)
-├── evaluations/<niche>/ # gold claims, gold changes, fixtures
-└── proposals/
+│   ├── cli/                  # init, validate, status, import, evidence, feature, claim, collect, analyze, diff, proposal, eval
+│   ├── domain/               # schemas.ts (nguồn sự thật), channels, ids, sold-count
+│   ├── registry/             # niche.yaml, brands.yaml
+│   ├── store/                # SQLite + snapshots, ghi nguyên tử, dedupe
+│   ├── importer/             # đường duy nhất ghi evidence (agent, nhập tay, connector)
+│   ├── claims/               # luật bằng chứng cho claim
+│   ├── connectors/           # P1: plugin thu thập tự động
+│   ├── analyze/ diff/ eval/  # theo lộ trình §14
+├── schemas/                  # JSON Schema sinh từ src/domain/schemas.ts
+└── evaluations/<niche>/      # bộ đáp án, fixtures
 ```
 
+Workspace của người dùng (tách khỏi repo): `niches/<niche>/`, `data/marc.db`, `data/snapshots/`, `reports/`, `proposals/`.
+
 Nguyên tắc:
-- Thống kê, dedupe, diff là **code xác định**; LLM chỉ dùng để trích đặc trưng, phân loại và viết lời.
+- Thống kê, dedupe, diff, luật bằng chứng là **code xác định** trong `marc`; agent chỉ nhìn, đọc, trích, phân loại và viết.
 - Playbook là file Markdown trong git → mọi thay đổi có lịch sử, rollback bằng git.
-- Connector hạng B cô lập, có phiên bản, có fixture; hỏng một connector không làm hỏng cả lượt chạy.
 - Không lưu cookie, không đăng nhập, không lưu dữ liệu cá nhân của người comment.
 
 ## 13. Câu hỏi mở
@@ -355,21 +369,23 @@ Nguyên tắc:
 | Q8 | Thu thập trang sản phẩm Shopee/TikTok Shop: có vượt được chống bot mà không cần đăng nhập không? Điều khoản sàn cho phép tới đâu? Sàn nào chọn làm P0? | Kỹ thuật (thử 1 ngày) + pháp lý | **Chặn tuần 2**; nếu không được thì sàn chuyển sang import thủ công |
 | Q9 | Tỉ lệ dùng từng nền tảng tại VN (Facebook, TikTok, Instagram, Threads, Locket, Zalo): đối chiếu báo cáo đầy đủ Digital 2026 Vietnam trước khi chốt ưu tiên kênh | Tác giả | Không |
 | Q10 | Trong phỏng vấn: thương hiệu trong ngách benchmark có làm marketing trên Locket/Zalo không, đo bằng gì? | Phỏng vấn người dùng | Không |
+| Q11 | Marketer mục tiêu có dùng agent (Claude Code, v.v.) không? Nếu không, cần lớp giao diện nào để họ dùng được skill (Claude Desktop, Cowork…)? | Phỏng vấn người dùng | **Chặn** quyết định phân phối |
+| Q12 | Harness của người dùng có công cụ trình duyệt chụp màn hình không (Claude in Chrome, Playwright MCP)? Nếu không, `marc capture` lên P0 | Kỹ thuật | Không |
 
 ## 14. Lộ trình 4 tuần
 
 | Tuần | Đầu ra | Demo cuối tuần |
 |---|---|---|
-| 0 (song song) | Phỏng vấn 5 người dùng (Q2); chốt ngách (Q1); gán nhãn bộ đáp án | Bộ đáp án ≥ 30 claim |
-| 1 | Schema + store + registry; connectors website, YouTube, Meta Ad Library, import thủ công; đo chi phí | `marc collect` cho 5 thương hiệu, có snapshot |
-| 2 | Connector TikTok + một sàn TMĐT; Feature extraction; baseline/outlier; phân loại comment + review | Danh sách outlier + ad chạy lâu nhất + sản phẩm bán chạy cho từng thương hiệu |
-| 3 | Claim builder + validator; báo cáo teardown + playbook; `marc eval` | Bản teardown đầu tiên, điểm eval lần 1 |
-| 4 | `marc diff` + proposals; chạy hằng ngày trong 7 ngày; sửa theo eval | Báo cáo thay đổi thật + ≥ 1 proposal được duyệt; đưa cho 5 người dùng thử |
+| 0 (song song) | Phỏng vấn 5 người dùng (Q2, Q11); chốt ngách (Q1); gán nhãn bộ đáp án | Bộ đáp án ≥ 30 claim |
+| 1 | `marc` lõi (registry, store, import batch, status, feature, claim) + skill v0.1; **dogfood**: agent teardown 5 thương hiệu bằng tay qua skill | Bằng chứng có ảnh chụp cho 5 thương hiệu × các kênh chính |
+| 2 | `marc analyze` (baseline, outlier, độ bền ad, tốc độ bán); sửa skill theo những gì agent làm sai ở tuần 1 | Danh sách outlier + ad chạy lâu nhất + sản phẩm bán chạy, tính bằng code |
+| 3 | Mẫu báo cáo hoàn chỉnh; `marc eval` | Teardown + playbook nháp đầu tiên, điểm eval lần 1 |
+| 4 | `marc diff` + `marc proposal`; workflow track; connector tự động đầu tiên (Thư viện quảng cáo Meta) để tích lũy hằng ngày | Báo cáo thay đổi thật + ≥ 1 proposal được duyệt; đưa cho 5 người dùng thử |
 
-Phụ thuộc chính: connector hạng B có thể hỏng bất cứ lúc nào. Nếu một connector ngốn quá 2 ngày công, cắt nó và dùng import thủ công cho nguồn đó.
+Phụ thuộc chính: chất lượng phụ thuộc vào việc agent tuân thủ skill. Mỗi lỗi agent mắc phải trong dogfood → hoặc sửa skill, hoặc chuyển luật đó vào code của `marc` để nó bị từ chối tự động.
 
 ## 15. Tiêu chí hoàn thành MVP
-- [ ] Chạy hết luồng `init → collect → analyze → report → diff → eval` cho 5 thương hiệu của ngách benchmark.
+- [ ] Agent chạy hết workflow `setup → teardown → track` qua skill cho 5 thương hiệu của ngách benchmark, rồi `marc eval`.
 - [ ] Đạt G2 (100% claim dạng sự kiện có nguồn) và G3 (≥ 85% đúng trên bộ đáp án).
 - [ ] Có ≥ 7 ngày lịch sử ad VN tự tích lũy, và báo cáo thay đổi phản ánh đúng ≥ 80% thay đổi trong bộ đáp án.
 - [ ] 5 người dùng thử nhận báo cáo; ghi lại điểm và việc họ đã áp dụng (G5).
